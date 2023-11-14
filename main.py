@@ -120,4 +120,4 @@ while True:
         # Set default kb language
         SendMessage(GetForegroundWindow(), WM_INPUTLANGCHANGEREQUEST, 0, 0x00020409)
 
-    time.sleep(0.2)
+    time.sleep(1)
