@@ -1,0 +1,8 @@
+pyautogui
+screen-brightness-control
+pypiwin32
+homeassistant-api
+keyboard
+pystray
+pillow
+appdirs
