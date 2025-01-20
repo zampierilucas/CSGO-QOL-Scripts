@@ -179,7 +179,7 @@ class Settings:
         with open(self.settings_file, 'w') as f:
             json.dump(self.data, f, indent=4)
 
-def apply_theme_to_titlebar(root):
+def apply_theme_to3_titlebar(root):
     version = sys.getwindowsversion()
 
     if version.major == 10 and version.build >= 22000:
