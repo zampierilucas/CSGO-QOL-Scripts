@@ -1,25 +1,55 @@
 name: Package Application with Pyinstaller
 
 on:
+  workflow_dispatch:
+    description: 'Manually trigger application packaging'
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  setup:
+    runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          architecture: 'x64'
 
-    - name: Package Application
-      uses: JackMcKew/pyinstaller-action-linux@main
-      with:
-        path: src
+  build:
+    needs: setup
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package Application
+        uses: JackMcKew/pyinstaller-action-windows@main
+        with:
+          path: src
+          spec: main.spec
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qol_scripts
+          path: src/dist
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: qol_scripts
-        path: src/dist
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: qol_scripts
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: "Development Build"
+          files: "*.exe"
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_unmatched_files: false

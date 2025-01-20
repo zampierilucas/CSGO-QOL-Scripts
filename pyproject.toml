@@ -6,11 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "QOL-Scripts"
 version = "0.1.0"
 description = "Gaming project"
-dependencies = [
+
     "pyautogui",
     "screen-brightness-control",
     "pypiwin32",
-    "homeassistant-api",
     "keyboard",
     "pystray",
     "pillow",
