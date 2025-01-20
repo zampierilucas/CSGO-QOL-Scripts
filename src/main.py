@@ -24,6 +24,7 @@ import sv_ttk
 import darkdetect
 import pywinstyles, sys
 import webbrowser
+import winreg
 
 PROGRAM_NAME = "QOL-Scripts"
 CONFIG_DIR = pathlib.Path(appdirs.user_config_dir(PROGRAM_NAME))
@@ -179,7 +180,7 @@ class Settings:
         with open(self.settings_file, 'w') as f:
             json.dump(self.data, f, indent=4)
 
-def apply_theme_to3_titlebar(root):
+def apply_theme_to_titlebar(root):
     version = sys.getwindowsversion()
 
     if version.major == 10 and version.build >= 22000:
@@ -407,6 +408,8 @@ class AutoAccept:
         self.settings = Settings()
         self.create_tray_icon()
         self.running = True
+        self.startup_reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        self.startup_reg_name = PROGRAM_NAME
         # Add signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
@@ -414,6 +417,34 @@ class AutoAccept:
     def signal_handler(self, signum, frame):
         logger.debug("Received signal to terminate. Cleaning up...")
         self.stop()
+
+    def is_startup_enabled(self):
+        """Check if app is registered to run at startup"""
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
+                              winreg.KEY_READ) as key:
+                value, _ = winreg.QueryValueEx(key, self.startup_reg_name)
+                return value == sys.argv[0]
+        except WindowsError:
+            return False
+
+    def toggle_startup(self, icon, item):
+        """Toggle startup registry entry"""
+        try:
+            if self.is_startup_enabled():
+                # Remove from startup
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
+                                  winreg.KEY_WRITE) as key:
+                    winreg.DeleteValue(key, self.startup_reg_name)
+                logger.debug("Removed from startup")
+            else:
+                # Add to startup
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
+                                  winreg.KEY_WRITE) as key:
+                    winreg.SetValueEx(key, self.startup_reg_name, 0, winreg.REG_SZ, sys.argv[0])
+                logger.debug("Added to startup")
+        except Exception as e:
+            logger.error(f"Failed to toggle startup: {e}")
 
     def create_tray_icon(self):
         icon_image = Image.new('RGB', (64, 64), color='red')
@@ -438,7 +469,10 @@ class AutoAccept:
             self.settings.save_settings()
 
         def open_about(icon, item):
-            webbrowser.open("https://github.com/ExampleUser/ExampleRepo")
+            webbrowser.open("https://github.com/zampierilucas/QOL-Scripts")
+
+        def check_startup(item):
+            return self.is_startup_enabled()
 
         menu_items = [
             pystray.MenuItem(PROGRAM_NAME, None, enabled=False),
@@ -452,6 +486,11 @@ class AutoAccept:
                 "Dimming",
                 toggle_dimming,
                 checked=check_dimming
+            ),
+            pystray.MenuItem(
+                "Start on Startup",
+                self.toggle_startup,
+                checked=check_startup
             ),
             pystray.MenuItem("Settings", self.show_settings),
             pystray.MenuItem("About", open_about),

@@ -13,12 +13,12 @@ This script offers:
 
 ## Installation
 1. Install Python 3.x.
-2. Use pip to install the required modules:
-   ```
-   pip install -r requirements.txt
+2. From the project root, install dependencies:
+   ```bash
+   pip install .
    ```
 3. Run main.py with:
-   ```
+   ```bash
    python main.py
    ```
 
