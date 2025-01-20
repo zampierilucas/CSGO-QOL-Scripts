@@ -6,3 +6,6 @@ keyboard
 pystray
 pillow
 appdirs
+sv-ttk
+darkdetect
+pywinstyles

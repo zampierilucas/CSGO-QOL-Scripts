@@ -18,10 +18,12 @@ import appdirs
 import pathlib
 import signal
 import win32gui
-import win32process
 import tempfile
 import argparse
-import ctypes
+import sv_ttk
+import darkdetect
+import pywinstyles, sys
+import webbrowser
 
 PROGRAM_NAME = "QOL-Scripts"
 CONFIG_DIR = pathlib.Path(appdirs.user_config_dir(PROGRAM_NAME))
@@ -136,41 +138,9 @@ def accept_lol_via_lcu():
 # ----------------------------------
 # 5) MAIN LOOP
 # ----------------------------------
-def reload_yaml():
-    """
-    Reloads YAML config so changes are recognized without restarting the script
-    """
-    global config
-    with open("config.yaml") as f:
-        config = yaml.safe_load(f)
-
-def is_windows_dark_mode():
-    """Check if Windows is in dark mode"""
-    try:
-        key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
-        registry = ctypes.windll.advapi32.RegOpenKeyExW
-        hkey = ctypes.c_void_p()
-        if registry(ctypes.c_void_p(0x80000001), key, 0, 0x20019, ctypes.byref(hkey)) == 0:
-            value = ctypes.c_ulong()
-            size = ctypes.c_ulong(4)
-            if ctypes.windll.advapi32.RegQueryValueExW(hkey, 'AppsUseLightTheme', 0, None, ctypes.byref(value), ctypes.byref(size)) == 0:
-                return value.value == 0
-    except Exception as e:
-        logger.error(f"Error checking Windows dark mode: {e}")
-    return False
-
-def apply_dark_mode_style(root):
-    """Apply dark mode style to the Tkinter window"""
-    if is_windows_dark_mode():
-        try:
-            root.tk.call("source", "azure.tcl")
-            root.tk.call("set_theme", "dark")
-        except Exception as e:
-            logger.error(f"Error applying dark mode style: {e}")
-
 class Settings:
     DEFAULT_SETTINGS = {
-        "dimmable_monitors": [],  # Start with empty list instead of default monitors
+        "dimmable_monitors": [], 
         "monitor_brightness": {
             "high": 100,
             "low": 10
@@ -181,8 +151,8 @@ class Settings:
             "Counter-Strike 2",
             "Hell Let Loose"
         ],
-        "dimming_enabled": True,  # Add this line
-        "auto_accept_enabled": True  # Add this line
+        "dimming_enabled": True, 
+        "auto_accept_enabled": True  
     }
     
     def __init__(self):
@@ -198,7 +168,7 @@ class Settings:
                 # Migrate existing settings if dimming_enabled is missing
                 if "dimming_enabled" not in self.data:
                     self.data["dimming_enabled"] = True
-                if "auto_accept_enabled" not in self.data:  # Add this migration
+                if "auto_accept_enabled" not in self.data:  
                     self.data["auto_accept_enabled"] = True
                 self.save_settings()
         except (FileNotFoundError, json.JSONDecodeError):
@@ -209,16 +179,30 @@ class Settings:
         with open(self.settings_file, 'w') as f:
             json.dump(self.data, f, indent=4)
 
+def apply_theme_to_titlebar(root):
+    version = sys.getwindowsversion()
+
+    if version.major == 10 and version.build >= 22000:
+        # Set the title bar color to the background color on Windows 11 for better appearance
+        pywinstyles.change_header_color(root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
+    elif version.major == 10:
+        pywinstyles.apply_style(root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
+
+        # A hacky way to update the title bar's color on Windows 10 (it doesn't update instantly like on Windows 11)
+        root.wm_attributes("-alpha", 0.99)
+        root.wm_attributes("-alpha", 1)
+
 class SettingsWindow:
     def __init__(self, settings):
         self.settings = settings
         self.root = tk.Tk()
-        self.root.title("Auto Accept Settings")
+        self.root.title("QOL Settings")
         self.root.geometry("400x700")  # Reduced initial window size
-        apply_dark_mode_style(self.root)
+        sv_ttk.set_theme(darkdetect.theme())
         self.monitor_vars = {}
         self.monitor_ids = {}  # Store mapping of display name to ID
         self.create_widgets()
+        apply_theme_to_titlebar(self.root)  # Apply title bar theme
 
     def get_running_programs(self):
         """Get list of running program window titles"""
@@ -244,7 +228,7 @@ class SettingsWindow:
             str(info.get('serial', '')),
             str(info.get('name', '')),
             str(info.get('manufacturer', '')),
-            str(info.get('index', ''))  # Add monitor index as last resort
+            str(info.get('index', ''))  
         ]
         return "|".join(filter(None, monitor_properties))
 
@@ -453,8 +437,11 @@ class AutoAccept:
             self.settings.data["auto_accept_enabled"] = not self.settings.data["auto_accept_enabled"]
             self.settings.save_settings()
 
+        def open_about(icon, item):
+            webbrowser.open("https://github.com/ExampleUser/ExampleRepo")
+
         menu_items = [
-            pystray.MenuItem(PROGRAM_NAME, None, enabled=False),  # Header
+            pystray.MenuItem(PROGRAM_NAME, None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 "Auto Accept",
@@ -467,6 +454,7 @@ class AutoAccept:
                 checked=check_dimming
             ),
             pystray.MenuItem("Settings", self.show_settings),
+            pystray.MenuItem("About", open_about),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Exit", self.stop)
         ]
