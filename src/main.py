@@ -422,8 +422,9 @@ class AutoAccept:
     def is_startup_enabled(self):
         """Check if app is registered to run at startup"""
         try:
+            # Use pythonw.exe instead of python.exe for background execution
             script_path = os.path.abspath(sys.argv[0])
-            startup_command = f'"{sys.executable}" "{script_path}"'
+            startup_command = f'"{sys.executable.replace("python.exe", "pythonw.exe")}" "{script_path}"'
             
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
                               winreg.KEY_READ) as key:
@@ -435,9 +436,9 @@ class AutoAccept:
     def toggle_startup(self, icon, item):
         """Toggle startup registry entry"""
         try:
-            # Get full path to Python executable and script
+            # Use pythonw.exe instead of python.exe for background execution
             script_path = os.path.abspath(sys.argv[0])
-            startup_command = f'"{sys.executable}" "{script_path}"'
+            startup_command = f'"{sys.executable.replace("python.exe", "pythonw.exe")}" "{script_path}"'
             
             if self.is_startup_enabled():
                 # Remove from startup
