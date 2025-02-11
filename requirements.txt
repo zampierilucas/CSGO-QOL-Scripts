@@ -8,3 +8,4 @@ sv-ttk
 darkdetect
 pywinstyles
 requests
+opencv-python

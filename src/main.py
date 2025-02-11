@@ -25,6 +25,7 @@ import darkdetect
 import pywinstyles, sys
 import webbrowser
 import winreg
+import io
 
 PROGRAM_NAME = "QOL-Scripts"
 CONFIG_DIR = pathlib.Path(appdirs.user_config_dir(PROGRAM_NAME))
@@ -49,37 +50,32 @@ def setup_logging(debug=False):
     return logger
 
 # ----------------------------------
-# 3) CS ACCEPT-IMAGE / UTILS
-encoded_accept_cs = "iVBORw0KGgoAAAANSUhEUgAAAOMAAABaCAYAAABKS+HxAAAKT2lDQ1BQaG90b3Nob3AgSUNDIHByb2ZpbGUAAHjanVNnVFPpFj333vRCS4iAlEtvUhUIIFJCi4AUkSYqIQkQSoghodkVUcERRUUEG8igiAOOjoCMFVEsDIoK2AfkIaKOg6OIisr74Xuja9a89+bN/rXXPues852zzwfACAyWSDNRNYAMqUIeEeCDx8TG4eQuQIEKJHAAEAizZCFz/SMBAPh+PDwrIsAHvgABeNMLCADATZvAMByH/w/qQplcAYCEAcB0kThLCIAUAEB6jkKmAEBGAYCdmCZTAKAEAGDLY2LjAFAtAGAnf+bTAICd+Jl7AQBblCEVAaCRACATZYhEAGg7AKzPVopFAFgwABRmS8Q5ANgtADBJV2ZIALC3AMDOEAuyAAgMADBRiIUpAAR7AGDIIyN4AISZABRG8lc88SuuEOcqAAB4mbI8uSQ5RYFbCC1xB1dXLh4ozkkXKxQ2YQJhmkAuwnmZGTKBNA/g88wAAKCRFRHgg/P9eM4Ors7ONo62Dl8t6r8G/yJiYuP+5c+rcEAAAOF0ftH+LC+zGoA7BoBt/qIl7gRoXgugdfeLZrIPQLUAoOnaV/Nw+H48PEWhkLnZ2eXk5NhKxEJbYcpXff5nwl/AV/1s+X48/Pf14L7iJIEyXYFHBPjgwsz0TKUcz5IJhGLc5o9H/LcL//wd0yLESWK5WCoU41EScY5EmozzMqUiiUKSKcUl0v9k4t8s+wM+3zUAsGo+AXuRLahdYwP2SycQWHTA4vcAAPK7b8HUKAgDgGiD4c93/+8//UegJQCAZkmScQAAXkQkLlTKsz/HCAAARKCBKrBBG/TBGCzABhzBBdzBC/xgNoRCJMTCQhBCCmSAHHJgKayCQiiGzbAdKmAv1EAdNMBRaIaTcA4uwlW4Dj1wD/phCJ7BKLyBCQRByAgTYSHaiAFiilgjjggXmYX4IcFIBBKLJCDJiBRRIkuRNUgxUopUIFVIHfI9cgI5h1xGupE7yAAygvyGvEcxlIGyUT3UDLVDuag3GoRGogvQZHQxmo8WoJvQcrQaPYw2oefQq2gP2o8+Q8cwwOgYBzPEbDAuxsNCsTgsCZNjy7EirAyrxhqwVqwDu4n1Y8+xdwQSgUXACTYEd0IgYR5BSFhMWE7YSKggHCQ0EdoJNwkDhFHCJyKTqEu0JroR+cQYYjIxh1hILCPWEo8TLxB7iEPENyQSiUMyJ7mQAkmxpFTSEtJG0m5SI+ksqZs0SBojk8naZGuyBzmULCAryIXkneTD5DPkG+Qh8lsKnWJAcaT4U+IoUspqShnlEOU05QZlmDJBVaOaUt2ooVQRNY9aQq2htlKvUYeoEzR1mjnNgxZJS6WtopXTGmgXaPdpr+h0uhHdlR5Ol9BX0svpR+iX6AP0dwwNhhWDx4hnKBmbGAcYZxl3GK+YTKYZ04sZx1QwNzHrmOeZD5lvVVgqtip8FZHKCpVKlSaVGyovVKmqpqreqgtV81XLVI+pXlN9rkZVM1PjqQnUlqtVqp1Q61MbU2epO6iHqmeob1Q/pH5Z/YkGWcNMw09DpFGgsV/jvMYgC2MZs3gsIWsNq4Z1gTXEJrHN2Xx2KruY/R27iz2qqaE5QzNKM1ezUvOUZj8H45hx+Jx0TgnnKKeX836K3hTvKeIpG6Y0TLkxZVxrqpaXllirSKtRq0frvTau7aedpr1Fu1n7gQ5Bx0onXCdHZ4/OBZ3nU9lT3acKpxZNPTr1ri6qa6UbobtEd79up+6Ynr5egJ5Mb6feeb3n+hx9L/1U/W36p/VHDFgGswwkBtsMzhg8xTVxbzwdL8fb8VFDXcNAQ6VhlWGX4YSRudE8o9VGjUYPjGnGXOMk423GbcajJgYmISZLTepN7ppSTbmmKaY7TDtMx83MzaLN1pk1mz0x1zLnm+eb15vft2BaeFostqi2uGVJsuRaplnutrxuhVo5WaVYVVpds0atna0l1rutu6cRp7lOk06rntZnw7Dxtsm2qbcZsOXYBtuutm22fWFnYhdnt8Wuw+6TvZN9un2N/T0HDYfZDqsdWh1+c7RyFDpWOt6azpzuP33F9JbpL2dYzxDP2DPjthPLKcRpnVOb00dnF2e5c4PziIuJS4LLLpc+Lpsbxt3IveRKdPVxXeF60vWdm7Obwu2o26/uNu5p7ofcn8w0nymeWTNz0MPIQ+BR5dE/C5+VMGvfrH5PQ0+BZ7XnIy9jL5FXrdewt6V3qvdh7xc+9j5yn+M+4zw33jLeWV/MN8C3yLfLT8Nvnl+F30N/I/9k/3r/0QCngCUBZwOJgUGBWwL7+Hp8Ib+OPzrbZfay2e1BjKC5QRVBj4KtguXBrSFoyOyQrSH355jOkc5pDoVQfujW0Adh5mGLw34MJ4WHhVeGP45wiFga0TGXNXfR3ENz30T6RJZE3ptnMU85ry1KNSo+qi5qPNo3ujS6P8YuZlnM1VidWElsSxw5LiquNm5svt/87fOH4p3iC+N7F5gvyF1weaHOwvSFpxapLhIsOpZATIhOOJTwQRAqqBaMJfITdyWOCnnCHcJnIi/RNtGI2ENcKh5O8kgqTXqS7JG8NXkkxTOlLOW5hCepkLxMDUzdmzqeFpp2IG0yPTq9MYOSkZBxQqohTZO2Z+pn5mZ2y6xlhbL+xW6Lty8elQfJa7OQrAVZLQq2QqboVFoo1yoHsmdlV2a/zYnKOZarnivN7cyzytuQN5zvn//tEsIS4ZK2pYZLVy0dWOa9rGo5sjxxedsK4xUFK4ZWBqw8uIq2Km3VT6vtV5eufr0mek1rgV7ByoLBtQFr6wtVCuWFfevc1+1dT1gvWd+1YfqGnRs+FYmKrhTbF5cVf9go3HjlG4dvyr+Z3JS0qavEuWTPZtJm6ebeLZ5bDpaql+aXDm4N2dq0Dd9WtO319kXbL5fNKNu7g7ZDuaO/PLi8ZafJzs07P1SkVPRU+lQ27tLdtWHX+G7R7ht7vPY07NXbW7z3/T7JvttVAVVN1WbVZftJ+7P3P66Jqun4lvttXa1ObXHtxwPSA/0HIw6217nU1R3SPVRSj9Yr60cOxx++/p3vdy0NNg1VjZzG4iNwRHnk6fcJ3/ceDTradox7rOEH0x92HWcdL2pCmvKaRptTmvtbYlu6T8w+0dbq3nr8R9sfD5w0PFl5SvNUyWna6YLTk2fyz4ydlZ19fi753GDborZ752PO32oPb++6EHTh0kX/i+c7vDvOXPK4dPKy2+UTV7hXmq86X23qdOo8/pPTT8e7nLuarrlca7nuer21e2b36RueN87d9L158Rb/1tWeOT3dvfN6b/fF9/XfFt1+cif9zsu72Xcn7q28T7xf9EDtQdlD3YfVP1v+3Njv3H9qwHeg89HcR/cGhYPP/pH1jw9DBY+Zj8uGDYbrnjg+OTniP3L96fynQ89kzyaeF/6i/suuFxYvfvjV69fO0ZjRoZfyl5O/bXyl/erA6xmv28bCxh6+yXgzMV70VvvtwXfcdx3vo98PT+R8IH8o/2j5sfVT0Kf7kxmTk/8EA5jz/GMzLdsAAAAgY0hSTQAAeiUAAICDAAD5/wAAgOkAAHUwAADqYAAAOpgAABdvkl/FRgAADJpJREFUeNrsnWtsHNUVx//nzuyu7fixduzYTmI7zhMnJCEJoWlCE1JIIRISH6BVVbWo7yL6oQX1Q+mHVqgtaqt+QCqiD6mpVIgQVFRtoaKB8EogvAmJHSfOy7Exfifr13r92Lm3H/bhXe/M2muvd+/G5yetvDsz9557z8zxuefMvTNUebNXKaUAhfBHgJQCiAAFKIT3QUFGfiP0O7orhkg1kSPV9AMQqppAEDG/BQgEAiimonAdMlKfSqyIQDCIYJCI1mMQorUThb4RASGp0cIgiq+QpvZM/Q4VhCCbA6PttOnjVFFQjF6UQkiP0c5QqN00pZc4PYZ1HjlFUk3X4xShegEJCakiZVTcMfHNDp+jmE4Q4tscqVeG2yCVimmPCvczpGNBAiYRBAEuYcAgghACRvi8iEhfw39B03U9XbmpoGIvS8dzMnV0uA9KxVyzU+efiKL6pUhjp2tvmqzY8xfbqch1HrmIVPhCkOGPBQkLCiYpQCnC+q9tQXGdF8IUYBhm4VGWRKBtCL3PnYeEgqCwIXrXlLEhMkwGIUOgYLUX5V9eh2DQggAUiuu8rBmGyRIFdSWYlBICitgjMkwWEaaAZVkQyjHcZRgmU0hLQSjFxsgw2UYpBRGXK2cYJkvWSBCSh6kMk3UIBMGjVIbJPoIEhGQ9MEz2PaMQnE1lGB6mMgwTb4ycwGGY7KMA8NQbhtEASyk2RobRwhgti42RYfTwjBJi7os5GYZJF0HFnpFh9PCMUkFEnw3BMEzWUFDxj3ZhGCZ75sjGyDAaEPuANoZhsoggNkaG0cQYeQYOw+hhjDxMZRgepjIMw8bIMPpBEGyMDKOFMXICh2E0GaYCEGyNDKOHZzRzcdWGv8ePSf+EQ6cIJfXeBZM92uvHaN8oAr4AgoFJKAm48k24izwoWLYEBeUFMDyGVrKUpRDwBebVFvcSN8x8c171C4NguA0YbhPClZobGO0fTb8BCEJ+Wb42UaMpctAYX3/glaT77zh0J/JK06fkieFxdJzoQPOfGmd1fNXty7Fydw0qNlXA8JhZl+XvHcEbD746Lx1sf2Qnlt+yIm31u5e7Ubu/HlU7quCtL0167KR/Eq997+W0X0eelR4c+MNBfTyjyLFVG8MdQzMe09/ch5V7aucvTAFXXmtF0xOnUirW/Wonul/tBADseuxWlDeU6yVLAyY6J3DxcAsuHm6Bq9KFXT/dg5JVXixWCAThEmZONbr7ZPeMx7Q8f3becoJjQZz4zVspG8d0CiuXaCVLRyZ7JnH8oTfw2bsdizhoBITLyKEUjgJaDjXPeFigNQB/j3/OYqwJC2//8hiuvd8/r+ZW7q9G3gwxSSZl6c7J336IaxeuLVrPaJqUO55xoNVnu736wAp0vfJZ3Lbe0z2oP7B6TnLOHG7EcLPzcNgsN7H+vgYUlOeDDIGJoXH0Nvai62h8G1YfWKOVLDtW3FUzu/iq2DPv+ieGx9H3dm/S4z98/F0ceOIgKCZ8IgEUb/EmiSknELhkn+BJVq6wqlAnxwjTzKGbG10fdiZsq71nFaq2VycY45knT8/JGPvP9qP9P1cc9+/61R6Ub6pI2F6ztw7Wd7ejr6kXzc82YfSCH2Xrl2ojy+lC3faDHQt2vmzr/wkw0jWCpqdOof+dPttYcvDKILwxGXEz34W9j97mKGfMF8DRbx+x3ZesnHaekXIkgSODEpeeuZCwvWpblWPgP/TpEIprilOS88Hv3nHc98W/fAkFFQWO+w2Pgaod1ajaUY0x3xjIIG1k6URhdSFueWgX/tf4X8iRxLe9XDt/Nc4YFwsiV54n7nOIJUrqS+Ep9qBka+LJ6znZlbIMa8Cy91K/3pPUOKaTV5qnjSwtLzyXgS0PbLPdN9I5vBjzNxBS5sZ7qDpOfJqwbcmGwmgsU28TM7X87SxUCi+Ddcrmld1SjvKNFWntTyZl6coSh+zvSPfIYszgQEzmgDEGA0F8+mJbwvY1B9dNXcTry+yTPpd9sxOigCv/vGy7a81da9PboUzK0vn6cwiRzDwTixEhVVD7Rl5tsU/7xyYtCiqWQBQmJqM63/9sVjJGrzpPt/KuKU1rfzIpS2f8ffa3n1IZol9PmFYOeMa21684JgJiafjGJpz5Y/w0stZ/XMIN922E4U4+h3PMN+a4b65pfR1kJWPo9ACan2ma8biilcWo+UJtWmXLoETjXz+xzwPUeRenMer+stTxoXH0HkucdbPhmw0J25Y2VDgmS+xuEcTJGbQ3kKWfS3/8lklZM3H5uYszHlNzd11ajXF8aByNfz+FYL/9qKx0beniNEZD8wZePWs/R"
+# 2) CS ACCEPT-IMAGE / UTILS
+encoded_accept_cs = "iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABdaVRYdFNuaXBNZXRhZGF0YQAAAAAAeyJjbGlwUG9pbnRzIjpbeyJ4IjowLCJ5IjowfSx7IngiOjE4LCJ5IjowfSx7IngiOjE4LCJ5IjoxOH0seyJ4IjowLCJ5IjoxOH1dfYQwdLwAAAAmSURBVDhPYzTbHvSfgQqACUpTDEYNIgxGDSIMRg0iDEYNIgQYGADd0QJi+65e0gAAAABJRU5ErkJggg=="
 
 def accept_match(img_base64):
     """
     Accept a match by:
-      1) Decoding base64-encoded image
+      1) Decoding base64-encoded image into PIL Image
       2) Locating the image on screen
       3) Clicking if found
     """
     try:
-        img_data = base64.b64decode(img_base64 + "=" * (-len(img_base64) % 4))  # Fix padding
-        # Use temp file for the image
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
-            temp_file.write(img_data)
-            temp_file.flush()
+        # Decode base64 directly to bytes
+        img_data = base64.b64decode(img_base64)
+        # Create PIL Image directly from bytes
+        img = Image.open(io.BytesIO(img_data))  
+        
+        accept_btn = None
+        # accept_btn = pyautogui.locateCenterOnScreen(img, confidence=0.999)
+        
+        if accept_btn is not None:
+            # pyautogui.click(accept_btn)
+            # pyautogui.move(0, 300)
+            logger.debug("Match accepted via image recognition (CS).")
+        else:
+            logger.debug("CS accept button not found on screen.")
             
-            accept_btn = pyautogui.locateCenterOnScreen(
-                temp_file.name,
-                confidence=0.8
-            )
-            
-            if accept_btn is not None:
-                pyautogui.click(accept_btn)
-                pyautogui.move(0, 300)
-                logger.debug("Match accepted via image recognition (CS).")
-            else:
-                logger.debug("CS accept button not found on screen.")
-            
-            # Clean up temp file
-            os.unlink(temp_file.name)
     except Exception as e:
         logger.error(f"Error in accept_match: {str(e)}")
 
@@ -89,9 +85,14 @@ def set_brigtness_side_monitors(brightness, monitor_ids):
     """
     for monitor_id in monitor_ids:
         try:
-            sbc.set_brightness(brightness, display=monitor_id)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"Set brightness to {brightness} for monitor ID {monitor_id}")
+            current_brightness = sbc.get_brightness(display=monitor_id)[0]
+            if current_brightness != brightness:
+                sbc.set_brightness(brightness, display=monitor_id)
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Set brightness to {brightness} for monitor ID {monitor_id}")
+            else:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(f"Brightness for monitor ID {monitor_id} is already {brightness}, no change needed")
         except Exception as e:
             logger.error(f"Failed to set brightness for monitor ID {monitor_id}: {e}")
 
@@ -421,16 +422,23 @@ class AutoAccept:
     def is_startup_enabled(self):
         """Check if app is registered to run at startup"""
         try:
+            script_path = os.path.abspath(sys.argv[0])
+            startup_command = f'"{sys.executable}" "{script_path}"'
+            
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
                               winreg.KEY_READ) as key:
                 value, _ = winreg.QueryValueEx(key, self.startup_reg_name)
-                return value == sys.argv[0]
+                return value == startup_command
         except WindowsError:
             return False
 
     def toggle_startup(self, icon, item):
         """Toggle startup registry entry"""
         try:
+            # Get full path to Python executable and script
+            script_path = os.path.abspath(sys.argv[0])
+            startup_command = f'"{sys.executable}" "{script_path}"'
+            
             if self.is_startup_enabled():
                 # Remove from startup
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
@@ -441,13 +449,21 @@ class AutoAccept:
                 # Add to startup
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
                                   winreg.KEY_WRITE) as key:
-                    winreg.SetValueEx(key, self.startup_reg_name, 0, winreg.REG_SZ, sys.argv[0])
-                logger.debug("Added to startup")
+                    winreg.SetValueEx(key, self.startup_reg_name, 0, winreg.REG_SZ, startup_command)
+                logger.debug(f"Added to startup with command: {startup_command}")
         except Exception as e:
             logger.error(f"Failed to toggle startup: {e}")
 
     def create_tray_icon(self):
-        icon_image = Image.new('RGB', (64, 64), color='red')
+        try:
+            # Use base64 encoded icon instead of file
+            icon_base64 = "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"
+            icon_data = base64.b64decode(icon_base64)
+            icon_image = Image.open(io.BytesIO(icon_data))
+        except Exception as e:
+            logger.error(f"Failed to load icon: {e}")
+            # Fallback to default red square icon
+            icon_image = Image.new('RGB', (64, 64), color='red')
         
         def check_dimming(item):
             return self.settings.data["dimming_enabled"]
@@ -556,7 +572,7 @@ class AutoAccept:
                         self.settings.data["dimmable_monitors"]
                     )
 
-            time.sleep(1)
+            time.sleep(3)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="QOL-Scripts")
