@@ -572,7 +572,7 @@ class AutoAccept:
                         self.settings.data["dimmable_monitors"]
                     )
 
-            time.sleep(3)
+            time.sleep(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="QOL-Scripts")
