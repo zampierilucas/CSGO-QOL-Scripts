@@ -26,6 +26,9 @@ import pywinstyles, sys
 import webbrowser
 import winreg
 import io
+import shutil
+import winshell
+from win32com.client import Dispatch
 
 PROGRAM_NAME = "QOL-Scripts"
 CONFIG_DIR = pathlib.Path(appdirs.user_config_dir(PROGRAM_NAME))
@@ -409,8 +412,8 @@ class AutoAccept:
         self.settings = Settings()
         self.create_tray_icon()
         self.running = True
-        self.startup_reg_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        self.startup_reg_name = PROGRAM_NAME
+        self.program_dir = os.path.join(os.environ['PROGRAMFILES'], PROGRAM_NAME)
+        self.startup_dir = os.path.join(winshell.startup(), f"{PROGRAM_NAME}.lnk")
         # Add signal handler
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
@@ -421,37 +424,48 @@ class AutoAccept:
 
     def is_startup_enabled(self):
         """Check if app is registered to run at startup"""
-        try:
-            # Use pythonw.exe instead of python.exe for background execution
-            script_path = os.path.abspath(sys.argv[0])
-            startup_command = f'"{sys.executable.replace("python.exe", "pythonw.exe")}" "{script_path}"'
-            
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
-                              winreg.KEY_READ) as key:
-                value, _ = winreg.QueryValueEx(key, self.startup_reg_name)
-                return value == startup_command
-        except WindowsError:
-            return False
+        return os.path.exists(self.startup_dir)
+
+    def create_shortcut(self, target_path):
+        """Create a shortcut in the Windows Startup folder"""
+        shell = Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortCut(self.startup_dir)
+        shortcut.Targetpath = target_path
+        shortcut.WorkingDirectory = os.path.dirname(target_path)
+        shortcut.IconLocation = target_path
+        shortcut.save()
 
     def toggle_startup(self, icon, item):
-        """Toggle startup registry entry"""
+        """Toggle startup by managing shortcut in Windows Startup folder"""
         try:
-            # Use pythonw.exe instead of python.exe for background execution
-            script_path = os.path.abspath(sys.argv[0])
-            startup_command = f'"{sys.executable.replace("python.exe", "pythonw.exe")}" "{script_path}"'
-            
             if self.is_startup_enabled():
                 # Remove from startup
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
-                                  winreg.KEY_WRITE) as key:
-                    winreg.DeleteValue(key, self.startup_reg_name)
+                if os.path.exists(self.startup_dir):
+                    os.remove(self.startup_dir)
                 logger.debug("Removed from startup")
             else:
-                # Add to startup
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.startup_reg_path, 0, 
-                                  winreg.KEY_WRITE) as key:
-                    winreg.SetValueEx(key, self.startup_reg_name, 0, winreg.REG_SZ, startup_command)
-                logger.debug(f"Added to startup with command: {startup_command}")
+                # Create program directory if it doesn't exist
+                os.makedirs(self.program_dir, exist_ok=True)
+                
+                # Get current executable path
+                if getattr(sys, 'frozen', False):
+                    # Running as compiled executable
+                    current_exe = sys.executable
+                else:
+                    # Running as script
+                    current_exe = os.path.abspath(sys.argv[0])
+                
+                # Define target path in program directory
+                target_exe = os.path.join(self.program_dir, os.path.basename(current_exe))
+                
+                # Copy executable to program directory if not already there
+                if not os.path.exists(target_exe) or os.path.getmtime(current_exe) > os.path.getmtime(target_exe):
+                    shutil.copy2(current_exe, target_exe)
+                
+                # Create shortcut in startup folder
+                self.create_shortcut(target_exe)
+                logger.debug(f"Added to startup with path: {target_exe}")
+        
         except Exception as e:
             logger.error(f"Failed to toggle startup: {e}")
 
